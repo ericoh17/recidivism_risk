@@ -1,21 +1,32 @@
-# imports                                                                              
+# imports                                                                     
 import numpy as np
 import pandas as pd
 import sqlite3
 import lightgbm as lgb
+import time
+import os
 
 # imports for model selection and eval
 from sklearn.model_selection import StratifiedKFold, RandomizedSearchCV
 from sklearn.metrics import classification_report
 import eli5
 
+# import functions for logging
+from logger.logger import create_logger
+
 # imports function to create features
 from feature_engineering.feature_pipeline import create_features
 
-# Globals                                                                              
+np.random.seed(203)
+
+# Logger
+start_time = time.strftime("%Y-%m-%d_%H%M")
+log_file = os.path.join("./log_output/", f'Run on {start_time}.log')
+logger = create_logger(log_file)
+
+# Globals                                                     
 cache_file = './cache.db'
 db_conn = sqlite3.connect("./data/recidivism_data.db")
-# Note: we should use try/finally to properly close the DB even if there are exceptions # but let's have faith in Python GC                                                
 
 # Optimize the db connection, don't forget to add the proper indexes as well          
 db_conn('PRAGMA temp_store = MEMORY;')
@@ -26,20 +37,25 @@ recidivism_train = pd.read_sql_query("SELECT id, is_recid FROM recidivism_train 
 
 Y_train = recidivism_train[['is_recid']]
 X_train = recidivism_train[['id']]
+logger.info(f'Input training data has shape: {X_train.shape}')
 
 # read in testing data
 recidivism_test = pd.read_sql_query("SELECT id, is_recid FROM recidivism_test ORDER BY id ASC", db_conn)
 
 Y_test = recidivism_test[['is_recid']]
 X_test = recidivism_test[['id']]
+logger.info(f'Input testing data has shape: {X_test.shape}')
 
 # do feature engineering
-X_train, X_test, _, _, _ = create_features(X_train, X_test, Y_train, db_conn, cache_file)
-print(X_train.shape)
-print(X_train.columns.values.tolist())
+logger.info("Feature engineering")
 
-print(X_test.shape)
-print(X_test.columns.values.tolist())
+X_train, X_test, _, _, _ = create_features(X_train, X_test, Y_train, db_conn, cache_file)
+
+logger.info(f'After feature engineering input training data has shape: {X_train.shape}')
+logger.info(f'Training data columns: {X_train.columns.values.tolist()}')
+
+logger.info(f'After feature engineering input testing data has shape: {X_test.shape}')
+logger.info(f'Testing data columns: {X_test.columns.values.tolist()}')
 
 # make categorical strings into type category
 for col in ["sex", "race", "crime_degree"]:
@@ -66,8 +82,9 @@ lgb_cv = RandomizedSearchCV(lgb_classifier,
                             scoring = 'roc_auc')
 
 lgb_cv.fit(X_train, Y_train.values.ravel())
-print(lgb_cv.best_score_)
-print(eli5.show_weights(lgb_cv))
+
+logger.info(f'The mean CV ROC AUC: {lgb_cv.best_score_}')
+logger.info(f'Weights of the best model: {eli5.show_weights(lgb_cv)}')
 
 # make predictions on test data using best params
 #Y_pred = lgb_cv.predict(X_test)
@@ -75,5 +92,7 @@ print(eli5.show_weights(lgb_cv))
 #print('Results on the test set:')
 #print(classification_report(Y_test, Y_pred))
 
+# close sql connection
+db_conn.close()
 
 

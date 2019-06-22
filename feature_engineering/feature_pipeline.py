@@ -1,5 +1,7 @@
 from functools import reduce
-from feature_engineering.pull_features.feat_init import feat_init
+from feature_engineering.pull_features.feat_demographics import feat_demographics
+from feature_engineering.pull_features.feat_crime import feat_crime
+from feature_engineering.pull_features.feat_prev_crime import feat_prev_crime
 
 def compose(*funcs):
   def _compose(f, g):
@@ -11,5 +13,7 @@ def feature_composition(*funcs):
   return compose(*reversed(funcs))
 
 create_features = feature_composition(
-  feat_init
+  feat_demographics,
+  feat_crime,
+  feat_prev_crime
 )

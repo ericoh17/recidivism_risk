@@ -21,7 +21,8 @@ def feat_crime(X_train, X_test, Y_train, db_conn, cache_file):
       crime_degree,
       jail_length,
       screen_on_time
-    FROM temp_init_table      
+    FROM 
+      temp_init_table      
     """
 
     df[[

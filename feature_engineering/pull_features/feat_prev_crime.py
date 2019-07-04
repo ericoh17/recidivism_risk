@@ -20,7 +20,8 @@ def feat_prev_crime(X_train, X_test, Y_train, db_conn, cache_file):
       juv_misd_count,
       juv_other_count,
       priors_count
-    FROM temp_init_table      
+    FROM 
+      temp_init_table      
     """
 
     df[[

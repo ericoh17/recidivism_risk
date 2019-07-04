@@ -19,7 +19,8 @@ def feat_demographics(X_train, X_test, Y_train, db_conn, cache_file):
       sex,
       age,
       race
-    FROM temp_init_table      
+    FROM 
+      temp_init_table      
     """
 
     df[[

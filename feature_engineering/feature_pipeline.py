@@ -2,7 +2,7 @@ from functools import reduce
 from feature_engineering.pull_features.feat_demographics import feat_demographics
 from feature_engineering.pull_features.feat_crime import feat_crime
 from feature_engineering.pull_features.feat_prev_crime import feat_prev_crime
-from feature_engineering.pull_feature.feat_justice import feat_justice
+from feature_engineering.pull_features.feat_justice import feat_justice
 
 def compose(*funcs):
   def _compose(f, g):

@@ -1,6 +1,6 @@
 import pandas as pd
 
-def feat_justice(X_train, X_test, Y_train, db_conn, cache_file):
+def feat_justice(X_train, X_test, db_conn, cache_file):
   def _get_justice(df, table):
     query = f"""
     with temp_t AS (    
@@ -27,16 +27,18 @@ def feat_justice(X_train, X_test, Y_train, db_conn, cache_file):
     ON
       LOWER(t_lastname) = LOWER(raw_lastname) AND LOWER(t_firstname) = LOWER(raw_firstname)
     ORDER BY
-      id ASC      
+      t_id ASC      
     """
+
+    temp_query_df = pd.read_sql_query(query, db_conn)
 
     df[[
       "custody_status",
       "marital_status",
       "supervision_level"
-      ]] = pd.read_sql_query(query, db_conn)
+      ]] = temp_query_df[["custody_status", "marital_status", "supervision_level"]]
 
   _get_justice(X_train, "recidivism_train")
   _get_justice(X_test, "recidivism_test")
   
-  return X_train, X_test, Y_train, db_conn, cache_file
+  return X_train, X_test, db_conn, cache_file

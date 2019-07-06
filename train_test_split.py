@@ -11,11 +11,11 @@ db_conn(f'PRAGMA cache_size = {1 << 18};') # Page_size = 4096, Cache = 4096 * 2^
 
 # Import data
 recidivism_dat = pd.read_sql_query("select * from `compas-scores-two-years`", db_conn)
+
+# randomly sample 80% of data for training
+# set the remaining 20% as test data
 recidivism_train = recidivism_dat.sample(frac = 0.8, random_state = 1006)
 recidivism_test = recidivism_dat.drop(recidivism_train.index)
-print(recidivism_dat.shape)
-print(recidivism_train.shape)
-print(recidivism_test.shape)
 
 recidivism_train.to_sql("recidivism_train", db_conn, if_exists = "replace")
 recidivism_test.to_sql("recidivism_test", db_conn, if_exists = "replace")     

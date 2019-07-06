@@ -5,11 +5,15 @@ import sqlite3
 import lightgbm as lgb
 import time
 import os
+import logging
 
 # imports for model selection and eval
 from sklearn.model_selection import StratifiedKFold, RandomizedSearchCV
 from sklearn.metrics import classification_report
 import eli5
+
+# imports for model testing
+from model_train_test.lgb_test import lgb_predict, lgb_feature_importance
 
 # import functions for logging
 from logger.logger import create_logger
@@ -47,18 +51,18 @@ X_test = recidivism_test[['id']]
 logger.info(f'Input testing data has shape: {X_test.shape}')
 
 # do feature engineering
-logger.info("Feature engineering")
+logger.info("\nFeature engineering:\n")
 
-X_train, X_test, _, _, _ = create_features(X_train, X_test, Y_train, db_conn, cache_file)
+X_train, X_test, _, _ = create_features(X_train, X_test, db_conn, cache_file)
 
 logger.info(f'After feature engineering input training data has shape: {X_train.shape}')
-logger.info(f'Training data columns: {X_train.columns.values.tolist()}')
+logger.info(f'Training data columns: {X_train.columns.values.tolist()}\n')
 
 logger.info(f'After feature engineering input testing data has shape: {X_test.shape}')
 logger.info(f'Testing data columns: {X_test.columns.values.tolist()}')
 
 # make categorical strings into type category
-for col in ["sex", "race", "crime_degree"]:
+for col in ["sex", "race", "crime_degree", "custody_status", "marital_status"]:
   X_train[col] = X_train[col].astype('category')
   X_test[col] = X_train[col].astype('category')
 
@@ -75,24 +79,28 @@ n_folds = 10
 lgb_classifier = lgb.LGBMClassifier()
 
 # run CV
+logger.info(f'\nCross Validation:\n')
+
 lgb_cv = RandomizedSearchCV(lgb_classifier, 
                             param_distributions = lgb_params,
                             n_iter = 20,
                             cv = n_folds,
                             scoring = 'roc_auc')
 
-lgb_cv.fit(X_train, Y_train.values.ravel())
+lgb_cv.fit(X_train.drop(columns = ['id']),
+           Y_train.values.ravel())
 
+logger.info(f'Best parameters from CV: {lgb_cv.best_params_}')
 logger.info(f'The mean CV ROC AUC: {lgb_cv.best_score_}')
-logger.info(f'Weights of the best model: {eli5.show_weights(lgb_cv)}')
 
 # make predictions on test data using best params
-#Y_pred = lgb_cv.predict(X_test)
-
-#print('Results on the test set:')
-#print(classification_report(Y_test, Y_pred))
+lgb_predict(lgb_cv, 
+            X_test.drop(columns = ['id']),
+            Y_test)
 
 # close sql connection
 db_conn.close()
 
+# shutdown logger
+logging.shutdown()
 

@@ -1,6 +1,6 @@
 import pandas as pd
 
-def feat_crime(X_train, X_test, Y_train, db_conn, cache_file):
+def feat_crime(X_train, X_test, db_conn, cache_file):
   def _get_crime(df, table):
     query = f"""
     with temp_init_table AS (    
@@ -34,4 +34,4 @@ def feat_crime(X_train, X_test, Y_train, db_conn, cache_file):
   _get_crime(X_train, "recidivism_train")
   _get_crime(X_test, "recidivism_test")
   
-  return X_train, X_test, Y_train, db_conn, cache_file
+  return X_train, X_test, db_conn, cache_file

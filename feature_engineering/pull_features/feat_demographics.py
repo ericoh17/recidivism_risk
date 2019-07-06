@@ -1,7 +1,6 @@
 import pandas as pd
-from feature_engineering.helpers import flatten
 
-def feat_demographics(X_train, X_test, Y_train, db_conn, cache_file):
+def feat_demographics(X_train, X_test, db_conn, cache_file):
   def _get_demographics(df, table):
     query = f"""
     with temp_init_table AS (    
@@ -32,4 +31,4 @@ def feat_demographics(X_train, X_test, Y_train, db_conn, cache_file):
   _get_demographics(X_train, "recidivism_train")
   _get_demographics(X_test, "recidivism_test")
   
-  return X_train, X_test, Y_train, db_conn, cache_file
+  return X_train, X_test, db_conn, cache_file

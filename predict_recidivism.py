@@ -1,3 +1,5 @@
+#!/Library/Frameworks/Python.framework/Versions/3.6/bin/python3.6
+
 # imports                                                                     
 import numpy as np
 import pandas as pd
@@ -6,6 +8,7 @@ import lightgbm as lgb
 import time
 import os
 import logging
+from sklearn.linear_model import LogisticRegression
 
 # imports for model selection and eval
 from sklearn.model_selection import StratifiedKFold, RandomizedSearchCV
@@ -37,18 +40,42 @@ db_conn('PRAGMA temp_store = MEMORY;')
 db_conn(f'PRAGMA cache_size = {1 << 18};') # Page_size = 4096, Cache = 4096 * 2^18 = 1 0\73 741 824 Bytes
 
 # read in training data
-recidivism_train = pd.read_sql_query("SELECT id, is_recid FROM recidivism_train ORDER BY id ASC", db_conn)
+recidivism_train = pd.read_sql_query("SELECT id, decile_score, is_recid "
+                                     "FROM recidivism_train ORDER BY id ASC", 
+                                     db_conn)
 
 Y_train = recidivism_train[['is_recid']]
+score_train = recidivism_train[['decile_score']]
 X_train = recidivism_train[['id']]
 logger.info(f'Input training data has shape: {X_train.shape}')
 
 # read in testing data
-recidivism_test = pd.read_sql_query("SELECT id, is_recid FROM recidivism_test ORDER BY id ASC", db_conn)
+recidivism_test = pd.read_sql_query("SELECT id, decile_score, is_recid "
+                                    "FROM recidivism_test ORDER BY id ASC", 
+                                    db_conn)
 
 Y_test = recidivism_test[['is_recid']]
+score_test = recidivism_test[['decile_score']]
 X_test = recidivism_test[['id']]
 logger.info(f'Input testing data has shape: {X_test.shape}')
+
+# create intervention variable
+def score_to_intervention (row):
+  if row['decile_score'] in {1, 2, 3, 4}:
+    return 0
+  if row['decile_score'] in {5, 6, 7, 8, 9, 10}:
+    return 1
+
+# convert each decile score to a binary variable
+# denoting whether each subject received
+# the intervention: 'extra' attention after release
+train_intervention = score_train.apply(lambda row: score_to_intervention(row), \
+                                                axis = 1)
+score_train = score_train.assign(intervention = train_intervention.values)
+
+test_intervention = score_test.apply(lambda row: score_to_intervention(row), \
+                                              axis = 1)
+score_test = score_test.assign(intervention = test_intervention.values)
 
 # do feature engineering
 logger.info("\nFeature engineering:\n")
@@ -66,6 +93,9 @@ for col in ["sex", "race", "crime_degree", "custody_status", "marital_status"]:
   X_train[col] = X_train[col].astype('category')
   X_test[col] = X_train[col].astype('category')
 
+X_train = X_train.drop(columns = ['id'])
+X_test = X_test.drop(columns = ['id'])
+
 # setup LightGBM parameters for CV
 lgb_params = {
   "num_leaves": [10, 12, 15],
@@ -76,27 +106,73 @@ lgb_params = {
 
 n_folds = 10
 
-lgb_classifier = lgb.LGBMClassifier()
+#outcome_classifier = lgb.LGBMClassifier()
 
 # run CV
 logger.info(f'\nCross Validation:\n')
 
-lgb_cv = RandomizedSearchCV(lgb_classifier, 
-                            param_distributions = lgb_params,
-                            n_iter = 20,
-                            cv = n_folds,
-                            scoring = 'roc_auc')
+#outcome_cv = RandomizedSearchCV(outcome_classifier, 
+#                                param_distributions = lgb_params,
+#                                n_iter = 20,
+#                                cv = n_folds,
+#                                scoring = 'roc_auc')
 
-lgb_cv.fit(X_train.drop(columns = ['id']),
-           Y_train.values.ravel())
+#outcome_cv.fit(X_train, Y_train.values.ravel())
 
-logger.info(f'Best parameters from CV: {lgb_cv.best_params_}')
-logger.info(f'The mean CV ROC AUC: {lgb_cv.best_score_}')
+#logger.info(f'Best parameters from CV: {lgb_cv.best_params_}')
+#logger.info(f'The mean CV ROC AUC: {lgb_cv.best_score_}')
 
 # make predictions on test data using best params
-lgb_predict(lgb_cv, 
-            X_test.drop(columns = ['id']),
-            Y_test)
+#lgb_predict(lgb_cv, 
+#            X_test.drop(columns = ['id']),
+#            Y_test)
+
+# one hot encode categorical features
+#X_train_encode = pd.get_dummies(X_train, columns = ['sex', 'race', 'crime_degree',
+#                                                    'custody_status', 'marital_status'],
+#                                drop_first = True)
+
+# observational outcome prediction model
+#outcome_mod = LogisticRegression(random_state = 0,
+#                                 solver = 'lbfgs').fit(X_train_encode.drop(columns = ['id']), 
+#                                                       Y_train[['is_recid']].to_numpy)
+
+#outcome_pred = outcome_cv.predict(X_test)
+#print(classification_report(Y_test, outcome_pred))
+
+# counterfactual outcome prediction model
+cf_outcome_classifier = lgb.LGBMClassifier()
+
+cf_outcome_cv = RandomizedSearchCV(cf_outcome_classifier,
+                                   param_distributions = lgb_params,
+                                   n_iter = 20,
+                                   cv = n_folds,
+                                   scoring = 'roc_auc')
+#no_intervention = score_train['intervention'] == 0
+cf_outcome_cv.fit(X_train[score_train['intervention'] == 0],
+                  Y_train[score_train['intervention'] == 0].values.ravel())
+
+cf_outcome_pred = cf_outcome_cv.predict(X_test)
+print(classification_report(score_test['intervention'].values, cf_outcome_pred))
+
+# propensity prediction model
+#propensity_mod = LogisticRegression(random_state = 0, 
+#                                    solver = 'lbfgs').fit(X_train.drop(columns = ['id']), 
+#                                                          score_train[['intervention']].to_numpy)
+
+#propensity_classifier = lgb.LGBMClassifier()
+
+#propensity_cv = RandomizedSearchCV(propensity_classifier,
+#                                   param_distributions = lgb_params,
+#                                   n_iter = 20,
+#                                   cv = n_folds,
+#                                   scoring = 'roc_auc')
+
+#propensity_cv.fit(X_train.drop(columns = ['id']),
+#                  score_train[['intervention']].values.ravel())
+
+#propensity_pred = propensity_cv.predict(X_test.drop(columns = ['id']))
+#print(classification_report(score_test, propensity_pred))
 
 # close sql connection
 db_conn.close()

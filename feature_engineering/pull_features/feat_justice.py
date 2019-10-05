@@ -37,6 +37,9 @@ def feat_justice(X_train, X_test, db_conn, cache_file):
       "marital_status",
       "supervision_level"
       ]] = temp_query_df[["custody_status", "marital_status", "supervision_level"]]
+    #df = df.assign(custody_status = temp_query_df[['custody_status']].values,
+    #               marital_status = temp_query_df[['marital_status']].values,
+    #               supervision_level = temp_query_df[['supervision_level']].values)
 
   _get_justice(X_train, "recidivism_train")
   _get_justice(X_test, "recidivism_test")

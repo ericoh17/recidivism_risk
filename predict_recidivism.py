@@ -106,18 +106,18 @@ lgb_params = {
 
 n_folds = 10
 
-#outcome_classifier = lgb.LGBMClassifier()
-
 # run CV
 logger.info(f'\nCross Validation:\n')
 
-#outcome_cv = RandomizedSearchCV(outcome_classifier, 
-#                                param_distributions = lgb_params,
-#                                n_iter = 20,
-#                                cv = n_folds,
-#                                scoring = 'roc_auc')
+outcome_classifier = lgb.LGBMClassifier()
 
-#outcome_cv.fit(X_train, Y_train.values.ravel())
+outcome_cv = RandomizedSearchCV(outcome_classifier, 
+                                param_distributions = lgb_params,
+                                n_iter = 20,
+                                cv = n_folds,
+                                scoring = 'roc_auc')
+
+outcome_cv.fit(X_train, Y_train.values.ravel())
 
 #logger.info(f'Best parameters from CV: {lgb_cv.best_params_}')
 #logger.info(f'The mean CV ROC AUC: {lgb_cv.best_score_}')
@@ -137,8 +137,7 @@ logger.info(f'\nCross Validation:\n')
 #                                 solver = 'lbfgs').fit(X_train_encode.drop(columns = ['id']), 
 #                                                       Y_train[['is_recid']].to_numpy)
 
-#outcome_pred = outcome_cv.predict(X_test)
-#print(classification_report(Y_test, outcome_pred))
+obs_outcome_pred = outcome_cv.predict(X_test)
 
 # counterfactual outcome prediction model
 cf_outcome_classifier = lgb.LGBMClassifier()
@@ -148,31 +147,38 @@ cf_outcome_cv = RandomizedSearchCV(cf_outcome_classifier,
                                    n_iter = 20,
                                    cv = n_folds,
                                    scoring = 'roc_auc')
-#no_intervention = score_train['intervention'] == 0
+
 cf_outcome_cv.fit(X_train[score_train['intervention'] == 0],
                   Y_train[score_train['intervention'] == 0].values.ravel())
 
 cf_outcome_pred = cf_outcome_cv.predict(X_test)
-print(classification_report(score_test['intervention'].values, cf_outcome_pred))
 
 # propensity prediction model
 #propensity_mod = LogisticRegression(random_state = 0, 
 #                                    solver = 'lbfgs').fit(X_train.drop(columns = ['id']), 
 #                                                          score_train[['intervention']].to_numpy)
 
-#propensity_classifier = lgb.LGBMClassifier()
+propensity_classifier = lgb.LGBMClassifier()
 
-#propensity_cv = RandomizedSearchCV(propensity_classifier,
-#                                   param_distributions = lgb_params,
-#                                   n_iter = 20,
-#                                   cv = n_folds,
-#                                   scoring = 'roc_auc')
+propensity_cv = RandomizedSearchCV(propensity_classifier,
+                                   param_distributions = lgb_params,
+                                   n_iter = 20,
+                                   cv = n_folds,
+                                   scoring = 'roc_auc')
 
-#propensity_cv.fit(X_train.drop(columns = ['id']),
-#                  score_train[['intervention']].values.ravel())
+propensity_cv.fit(X_train,
+                  score_train[['intervention']].values.ravel())
 
-#propensity_pred = propensity_cv.predict(X_test.drop(columns = ['id']))
-#print(classification_report(score_test, propensity_pred))
+propensity_pred = propensity_cv.predict(X_test)
+
+# add predictions to test set
+X_test['obs_outcome_pred'] = obs_outcome_pred
+X_test['cf_outcome_pred'] = cf_outcome_pred
+X_test['propensity_pred'] = propensity_pred
+
+# merge test dataset
+full_test = pd.concat([Y_test, score_test['intervention'], X_test], axis = 1)
+print(full_test.head(10))
 
 # close sql connection
 db_conn.close()

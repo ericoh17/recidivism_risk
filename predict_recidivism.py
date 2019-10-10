@@ -24,6 +24,10 @@ from logger.logger import create_logger
 # imports function to create features
 from feature_engineering.feature_pipeline import create_features
 
+# import counterfactual functions
+from DR_counterfactuals.calc_counterfactual_metrics import calc_precision
+from DR_counterfactuals.calc_counterfactual_metrics import calc_recall
+
 np.random.seed(203)
 
 # Logger
@@ -137,7 +141,7 @@ outcome_cv.fit(X_train, Y_train.values.ravel())
 #                                 solver = 'lbfgs').fit(X_train_encode.drop(columns = ['id']), 
 #                                                       Y_train[['is_recid']].to_numpy)
 
-obs_outcome_pred = outcome_cv.predict(X_test)
+obs_outcome_pred = outcome_cv.predict_proba(X_test)
 
 # counterfactual outcome prediction model
 cf_outcome_classifier = lgb.LGBMClassifier()
@@ -151,7 +155,7 @@ cf_outcome_cv = RandomizedSearchCV(cf_outcome_classifier,
 cf_outcome_cv.fit(X_train[score_train['intervention'] == 0],
                   Y_train[score_train['intervention'] == 0].values.ravel())
 
-cf_outcome_pred = cf_outcome_cv.predict(X_test)
+cf_outcome_pred = cf_outcome_cv.predict_proba(X_test)
 
 # propensity prediction model
 #propensity_mod = LogisticRegression(random_state = 0, 
@@ -169,16 +173,23 @@ propensity_cv = RandomizedSearchCV(propensity_classifier,
 propensity_cv.fit(X_train,
                   score_train[['intervention']].values.ravel())
 
-propensity_pred = propensity_cv.predict(X_test)
+propensity_pred = propensity_cv.predict_proba(X_test)
 
 # add predictions to test set
-X_test['obs_outcome_pred'] = obs_outcome_pred
-X_test['cf_outcome_pred'] = cf_outcome_pred
-X_test['propensity_pred'] = propensity_pred
+X_test['obs_outcome_pred'] = obs_outcome_pred[:,1]
+X_test['cf_outcome_pred'] = cf_outcome_pred[:,1]
+X_test['propensity_pred'] = propensity_pred[:,1]
 
 # merge test dataset
 full_test = pd.concat([Y_test, score_test['intervention'], X_test], axis = 1)
-print(full_test.head(10))
+
+# calculate precision
+dr_precision = calc_precision(0.5, full_test)
+print(dr_precision)
+
+# calculate recall
+dr_recall = calc_recall(0.5, full_test)
+print(dr_recall)
 
 # close sql connection
 db_conn.close()

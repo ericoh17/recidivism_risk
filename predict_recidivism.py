@@ -9,6 +9,7 @@ import time
 import os
 import logging
 from sklearn.linear_model import LogisticRegression
+import seaborn
 
 # imports for model selection and eval
 from sklearn.model_selection import StratifiedKFold, RandomizedSearchCV
@@ -25,8 +26,7 @@ from logger.logger import create_logger
 from feature_engineering.feature_pipeline import create_features
 
 # import counterfactual functions
-from DR_counterfactuals.calc_counterfactual_metrics import calc_precision
-from DR_counterfactuals.calc_counterfactual_metrics import calc_recall
+import DR_counterfactuals.calc_counterfactual_metrics as DR
 
 np.random.seed(203)
 
@@ -184,12 +184,46 @@ X_test['propensity_pred'] = propensity_pred[:,1]
 full_test = pd.concat([Y_test, score_test['intervention'], X_test], axis = 1)
 
 # calculate precision
-dr_precision = calc_precision(0.5, full_test)
-print(dr_precision)
+#dr_precision = calc_precision(0.5, full_test)
+#print(dr_precision)
 
 # calculate recall
-dr_recall = calc_recall(0.5, full_test)
-print(dr_recall)
+#dr_recall = calc_recall(0.5, full_test)
+#print(dr_recall)
+
+# get PR curve
+#all_PR_df = DR.calc_PR_range(full_test)
+
+# remove NAs
+#all_PR_df = all_PR_df.dropna()
+
+# print PR curve
+#PR_plot = seaborn.lineplot(x = 'recall',
+#                           y = 'precision',
+#                           hue = 'type',
+#                           data = all_PR_df)
+#PR_plot.set(ylim = (0, 1))
+#PR_plot.set(xlim = (0, 1))
+
+#fig = PR_plot.get_figure()
+#fig.savefig('PR_plot.png')
+
+# get ROC curve
+all_ROC_df = DR.calc_ROC_range(full_test)
+
+# remove NAs                                                                                                             
+all_ROC_df = all_ROC_df.dropna()
+print(all_ROC_df.describe())
+# print PR curve                                                                                                                 
+ROC_plot = seaborn.lineplot(x = 'FPR',
+                            y = 'recall',
+                            hue = 'type',
+                            data = all_ROC_df)
+ROC_plot.set(ylim = (0, 1))
+ROC_plot.set(xlim = (0, 1))
+
+fig = ROC_plot.get_figure()
+fig.savefig('ROC_plot.png')
 
 # close sql connection
 db_conn.close()

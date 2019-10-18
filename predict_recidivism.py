@@ -25,8 +25,11 @@ from logger.logger import create_logger
 # imports function to create features
 from feature_engineering.feature_pipeline import create_features
 
-# import counterfactual functions
-import DR_counterfactuals.calc_counterfactual_metrics as DR
+# import counterfactual metrics functions
+import DR_counterfactuals.calc_counterfactual_metrics as CM
+
+# import observational metrics functions
+import obs_metrics.calc_observational_metrics as OM
 
 np.random.seed(203)
 
@@ -191,8 +194,10 @@ full_test = pd.concat([Y_test, score_test['intervention'], X_test], axis = 1)
 #dr_recall = calc_recall(0.5, full_test)
 #print(dr_recall)
 
+## get counterfactual metrics
+
 # get PR curve
-#all_PR_df = DR.calc_PR_range(full_test)
+#all_PR_df = CM.calc_cf_PR_range(full_test)
 
 # remove NAs
 #all_PR_df = all_PR_df.dropna()
@@ -209,21 +214,60 @@ full_test = pd.concat([Y_test, score_test['intervention'], X_test], axis = 1)
 #fig.savefig('PR_plot.png')
 
 # get ROC curve
-all_ROC_df = DR.calc_ROC_range(full_test)
+#all_ROC_df = CM.calc_cf_ROC_range(full_test)
 
 # remove NAs                                                                                                             
-all_ROC_df = all_ROC_df.dropna()
-print(all_ROC_df.describe())
+#all_ROC_df = all_ROC_df.dropna()
+#print(all_ROC_df.describe())
 # print PR curve                                                                                                                 
-ROC_plot = seaborn.lineplot(x = 'FPR',
-                            y = 'recall',
-                            hue = 'type',
-                            data = all_ROC_df)
-ROC_plot.set(ylim = (0, 1))
-ROC_plot.set(xlim = (0, 1))
+#ROC_plot = seaborn.lineplot(x = 'FPR',
+#                            y = 'recall',
+#                            hue = 'type',
+#                            data = all_ROC_df)
+#ROC_plot.set(ylim = (0, 1))
+#ROC_plot.set(xlim = (0, 1))
 
-fig = ROC_plot.get_figure()
-fig.savefig('ROC_plot.png')
+#fig = ROC_plot.get_figure()
+#fig.savefig('ROC_plot.png')
+
+## get observational metrics
+
+# get PR curve                                                                                                                  
+#obs_PR_df = OM.calc_obs_PR_range(full_test)                                                                                   
+
+# remove NAs                                                                                                                      
+#obs_PR_df = obs_PR_df.dropna()                                                                                                      
+
+# print PR curve                                                                                                                
+#obs_PR_plot = seaborn.lineplot(x = 'recall',                                                                                   
+#                               y = 'precision',                                                                              
+#                               hue = 'type',                                                                                        
+#                               data = obs_PR_df)                                                                             
+#obs_PR_plot.set(ylim = (0, 1))                                                                                                     
+#obs_PR_plot.set(xlim = (0, 1))                                                                                                 
+
+#fig = obs_PR_plot.get_figure()
+#fig.savefig('obs_PR_plot.png')  
+
+
+# get ROC curve
+obs_ROC_df = OM.calc_obs_ROC_range(full_test)
+
+# remove NAs
+obs_ROC_df = obs_ROC_df.dropna()
+
+# print ROC curve
+obs_ROC_plot = seaborn.lineplot(x = 'FPR',
+                                y = 'recall',
+                                hue = 'type',
+                                data = obs_ROC_df)
+
+obs_ROC_plot.set(ylim = (0, 1))
+obs_ROC_plot.set(xlim = (0, 1))
+
+fig = obs_ROC_plot.get_figure()
+fig.savefig('obs_ROC_plot.png')
+
 
 # close sql connection
 db_conn.close()

@@ -3,4 +3,3 @@ LightGBM/
 __pycache__/
 .DS_Store
 log_output/
-*.png

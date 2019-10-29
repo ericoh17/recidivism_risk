@@ -68,9 +68,9 @@ logger.info(f'Input testing data has shape: {X_test.shape}')
 
 # create intervention variable
 def score_to_intervention (row):
-  if row['decile_score'] in {1, 2, 3, 4}:
+  if row['decile_score'] in {1, 2, 3, 4, 5}:
     return 0
-  if row['decile_score'] in {5, 6, 7, 8, 9, 10}:
+  if row['decile_score'] in {6, 7, 8, 9, 10}:
     return 1
 
 # convert each decile score to a binary variable
@@ -105,10 +105,14 @@ X_test = X_test.drop(columns = ['id'])
 
 # setup LightGBM parameters for CV
 lgb_params = {
-  "num_leaves": [10, 12, 15],
-  "max_depth": [3, 4, 5],
-  "learning_rate": [0.1, 0.2, 0.3],
-  "bagging_fraction": [0.3, 0.4, 0.5]
+  "min_data_in_leaf": [10],
+  "num_leaves": [30, 40, 50, 60],
+  "max_depth": [3, 4, 5, 6],
+  "learning_rate": [0.01, 0.05],
+  "min_split_gain" : [0.01, 0.02],
+#  "bagging_fraction": [0.3, 0.4, 0.5],
+#  "bagging_freq": [2, 4, 6],
+  "objective": ['binary']
 }
 
 n_folds = 10
@@ -122,7 +126,7 @@ outcome_cv = RandomizedSearchCV(outcome_classifier,
                                 param_distributions = lgb_params,
                                 n_iter = 20,
                                 cv = n_folds,
-                                scoring = 'roc_auc')
+                                scoring = 'f1')
 
 outcome_cv.fit(X_train, Y_train.values.ravel())
 
@@ -153,7 +157,7 @@ cf_outcome_cv = RandomizedSearchCV(cf_outcome_classifier,
                                    param_distributions = lgb_params,
                                    n_iter = 20,
                                    cv = n_folds,
-                                   scoring = 'roc_auc')
+                                   scoring = 'f1')
 
 cf_outcome_cv.fit(X_train[score_train['intervention'] == 0],
                   Y_train[score_train['intervention'] == 0].values.ravel())
@@ -171,7 +175,7 @@ propensity_cv = RandomizedSearchCV(propensity_classifier,
                                    param_distributions = lgb_params,
                                    n_iter = 20,
                                    cv = n_folds,
-                                   scoring = 'roc_auc')
+                                   scoring = 'f1')
 
 propensity_cv.fit(X_train,
                   score_train[['intervention']].values.ravel())
@@ -197,58 +201,60 @@ full_test = pd.concat([Y_test, score_test['intervention'], X_test], axis = 1)
 ## get counterfactual metrics
 
 # get PR curve
-#all_PR_df = CM.calc_cf_PR_range(full_test)
+cf_PR_df = CM.calc_cf_PR_range(full_test)
 
 # remove NAs
-#all_PR_df = all_PR_df.dropna()
+cf_PR_df = cf_PR_df.dropna()
 
 # print PR curve
-#PR_plot = seaborn.lineplot(x = 'recall',
-#                           y = 'precision',
-#                           hue = 'type',
-#                           data = all_PR_df)
-#PR_plot.set(ylim = (0, 1))
-#PR_plot.set(xlim = (0, 1))
+cf_PR_plot = seaborn.lineplot(x = 'recall',
+                              y = 'precision',
+                              hue = 'model',
+                              data = cf_PR_df)
+cf_PR_plot.set(ylim = (0, 1))
+cf_PR_plot.set(xlim = (0, 1))
+cf_PR_plot.set_title('Precision-Recall Curve with Counterfactual Evaluations')
 
-#fig = PR_plot.get_figure()
-#fig.savefig('PR_plot.png')
+cf_PR_plot.get_figure().savefig('cf_PR_plot.png')
+cf_PR_plot.get_figure().clf()
 
 # get ROC curve
-#all_ROC_df = CM.calc_cf_ROC_range(full_test)
+cf_ROC_df = CM.calc_cf_ROC_range(full_test)
 
 # remove NAs                                                                                                             
-#all_ROC_df = all_ROC_df.dropna()
-#print(all_ROC_df.describe())
-# print PR curve                                                                                                                 
-#ROC_plot = seaborn.lineplot(x = 'FPR',
-#                            y = 'recall',
-#                            hue = 'type',
-#                            data = all_ROC_df)
-#ROC_plot.set(ylim = (0, 1))
-#ROC_plot.set(xlim = (0, 1))
+cf_ROC_df = cf_ROC_df.dropna()
 
-#fig = ROC_plot.get_figure()
-#fig.savefig('ROC_plot.png')
+# print PR curve                                                                                                                 
+cf_ROC_plot = seaborn.lineplot(x = 'FPR',
+                               y = 'recall',
+                               hue = 'model',
+                               data = cf_ROC_df)
+cf_ROC_plot.set(ylim = (0, 1))
+cf_ROC_plot.set(xlim = (0, 1))
+cf_ROC_plot.set_title('ROC Curve with Counterfactual Evaluations')
+
+cf_ROC_plot.get_figure().savefig('cf_ROC_plot.png')
+cf_ROC_plot.get_figure().clf()
 
 ## get observational metrics
 
 # get PR curve                                                                                                                  
-#obs_PR_df = OM.calc_obs_PR_range(full_test)                                                                                   
+obs_PR_df = OM.calc_obs_PR_range(full_test)                                                                                   
 
 # remove NAs                                                                                                                      
-#obs_PR_df = obs_PR_df.dropna()                                                                                                      
+obs_PR_df = obs_PR_df.dropna()                                                                                                      
 
 # print PR curve                                                                                                                
-#obs_PR_plot = seaborn.lineplot(x = 'recall',                                                                                   
-#                               y = 'precision',                                                                              
-#                               hue = 'type',                                                                                        
-#                               data = obs_PR_df)                                                                             
-#obs_PR_plot.set(ylim = (0, 1))                                                                                                     
-#obs_PR_plot.set(xlim = (0, 1))                                                                                                 
+obs_PR_plot = seaborn.lineplot(x = 'recall',                                                                                   
+                               y = 'precision',                                                                              
+                               hue = 'model',                                                                                        
+                               data = obs_PR_df)                                                                             
+obs_PR_plot.set(ylim = (0, 1))                                                                                                     
+obs_PR_plot.set(xlim = (0, 1))
+obs_PR_plot.set_title('Precision-Recall Curve with Observational Evaluations')                                                                                                 
 
-#fig = obs_PR_plot.get_figure()
-#fig.savefig('obs_PR_plot.png')  
-
+obs_PR_plot.get_figure().savefig('obs_PR_plot.png')
+obs_PR_plot.get_figure().clf()
 
 # get ROC curve
 obs_ROC_df = OM.calc_obs_ROC_range(full_test)
@@ -259,15 +265,15 @@ obs_ROC_df = obs_ROC_df.dropna()
 # print ROC curve
 obs_ROC_plot = seaborn.lineplot(x = 'FPR',
                                 y = 'recall',
-                                hue = 'type',
+                                hue = 'model',
                                 data = obs_ROC_df)
 
 obs_ROC_plot.set(ylim = (0, 1))
 obs_ROC_plot.set(xlim = (0, 1))
+obs_ROC_plot.set_title('ROC Curve with Observational Evaluations')
 
-fig = obs_ROC_plot.get_figure()
-fig.savefig('obs_ROC_plot.png')
-
+obs_ROC_plot.get_figure().savefig('obs_ROC_plot.png')
+obs_ROC_plot.get_figure().clf()
 
 # close sql connection
 db_conn.close()

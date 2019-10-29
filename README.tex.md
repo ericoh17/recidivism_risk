@@ -45,3 +45,13 @@ We utilized gradient boosted trees to fit the regression models $\mathrm{E}(Y^0|
 We build a SQL-based feature engineering step to extract features for the prediction algorithms. Performing feature engineering on top of existing SQL databases allows for a scalable and easily maintained machine learning pipeline. In addition, there are speed gains over loading all the data into pandas. Lastly, although the ProPublica data is not very large, being SQL based means a similar feature engineering pipeline can be done on clusters for big data.  
 
 # Results
+
+![](results/cf_PR_plot.png)
+![](results/obs_PR_plot.png)
+
+For the precision-recall curve, the observational evaluation suggests that the observational model has better discrimination. The counterfactual evaluation suggests that there is little difference in discrimination. 
+
+![](results/cf_ROC_plot.png)
+![](results/obs_ROC_plot.png)
+
+For the ROC curve, the observational evaluation again suggests that the observational model has better discrimination; however, the counterfactual evaluation suggests there is little difference in discrimination, albeit both poorly. 

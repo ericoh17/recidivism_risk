@@ -53,12 +53,12 @@ def calc_obs_PR_range (test_dat):
   obs_df = pd.DataFrame({'cutoff_range': cutoff_range,
                          'precision': obs_precision,
                          'recall': obs_recall,
-                         'type': 'observational'})
+                         'model': 'observational'})
 
   cf_df = pd.DataFrame({'cutoff_range': cutoff_range,
                         'precision': cf_precision,
                         'recall': cf_recall,
-                        'type': 'counterfactual'})
+                        'model': 'counterfactual'})
 
   obs_PR_df = obs_df.append(cf_df, ignore_index = True)
 
@@ -80,12 +80,12 @@ def calc_obs_ROC_range (test_dat):
   obs_df = pd.DataFrame({'cutoff_range': cutoff_range,
                          'recall': obs_recall,
                          'FPR': obs_fpr,
-                         'type': 'observational'})
+                         'model': 'observational'})
 
   cf_df = pd.DataFrame({'cutoff_range': cutoff_range,
                         'recall': cf_recall,
                         'FPR': cf_fpr,
-                        'type': 'counterfactual'})
+                        'model': 'counterfactual'})
 
   obs_ROC_df = obs_df.append(cf_df, ignore_index = True)
 

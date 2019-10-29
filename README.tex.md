@@ -38,7 +38,7 @@ The counterfactual PR curve plots counterfactual precision, $\mathrm{E}(Y^0|\hat
 
 ## Prediction models
 
-We utilized gradient boosted trees to fit the regression models $\mathrm{E}(Y^0|X)$ and	$\text{P}(A=1|X)$.
+We utilized gradient boosted trees to fit the regression models $\mathrm{E}(Y|X)$, $\mathrm{E}(Y^0|X)$, and $\text{P}(A=1|X)$.
 
 # Feature engineering
 
@@ -55,3 +55,5 @@ For the precision-recall curve, the observational evaluation suggests that the o
 ![](results/obs_ROC_plot.png)
 
 For the ROC curve, the observational evaluation again suggests that the observational model has better discrimination; however, the counterfactual evaluation suggests there is little difference in discrimination, albeit both poorly. 
+
+These results suggest that the counterfactual and observational models are performing similarly (predict likelihood of recidivism under proposed intervention decisions) on subjects that received the intervention and did not. However, it is important to keep in mind that the intervention for this project was chosen somewhat arbitrarily. I assumed that all subjects with risk scores above 5 would receive intervention and that those 5 or below would not. 

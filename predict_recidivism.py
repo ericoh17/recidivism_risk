@@ -1,5 +1,3 @@
-#!/Library/Frameworks/Python.framework/Versions/3.6/bin/python3.6
-
 # imports                                                                     
 import numpy as np
 import pandas as pd
@@ -117,9 +115,9 @@ lgb_params = {
 
 n_folds = 10
 
-# run CV
-logger.info(f'\nCross Validation:\n')
+### train models
 
+# observed outcome prediction model
 outcome_classifier = lgb.LGBMClassifier()
 
 outcome_cv = RandomizedSearchCV(outcome_classifier, 
@@ -129,24 +127,6 @@ outcome_cv = RandomizedSearchCV(outcome_classifier,
                                 scoring = 'f1')
 
 outcome_cv.fit(X_train, Y_train.values.ravel())
-
-#logger.info(f'Best parameters from CV: {lgb_cv.best_params_}')
-#logger.info(f'The mean CV ROC AUC: {lgb_cv.best_score_}')
-
-# make predictions on test data using best params
-#lgb_predict(lgb_cv, 
-#            X_test.drop(columns = ['id']),
-#            Y_test)
-
-# one hot encode categorical features
-#X_train_encode = pd.get_dummies(X_train, columns = ['sex', 'race', 'crime_degree',
-#                                                    'custody_status', 'marital_status'],
-#                                drop_first = True)
-
-# observational outcome prediction model
-#outcome_mod = LogisticRegression(random_state = 0,
-#                                 solver = 'lbfgs').fit(X_train_encode.drop(columns = ['id']), 
-#                                                       Y_train[['is_recid']].to_numpy)
 
 obs_outcome_pred = outcome_cv.predict_proba(X_test)
 
@@ -165,10 +145,6 @@ cf_outcome_cv.fit(X_train[score_train['intervention'] == 0],
 cf_outcome_pred = cf_outcome_cv.predict_proba(X_test)
 
 # propensity prediction model
-#propensity_mod = LogisticRegression(random_state = 0, 
-#                                    solver = 'lbfgs').fit(X_train.drop(columns = ['id']), 
-#                                                          score_train[['intervention']].to_numpy)
-
 propensity_classifier = lgb.LGBMClassifier()
 
 propensity_cv = RandomizedSearchCV(propensity_classifier,
@@ -189,14 +165,6 @@ X_test['propensity_pred'] = propensity_pred[:,1]
 
 # merge test dataset
 full_test = pd.concat([Y_test, score_test['intervention'], X_test], axis = 1)
-
-# calculate precision
-#dr_precision = calc_precision(0.5, full_test)
-#print(dr_precision)
-
-# calculate recall
-#dr_recall = calc_recall(0.5, full_test)
-#print(dr_recall)
 
 ## get counterfactual metrics
 
